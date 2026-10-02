@@ -1,0 +1,324 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Language Detector</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Gujarati&family=Noto+Sans+Devanagari&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f6f5f1; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6a65; --line:#e4e2db;
+    --accent:#c2410c; --accent-soft:#fdeee5;
+    --en:#2563eb; --hi:#d97706; --gu:#059669; --other:#7c3aed;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#141413; --card:#1e1e1c; --ink:#f0efe9; --muted:#a3a29b; --line:#33332f;
+      --accent:#fb923c; --accent-soft:#3a2416; --en:#60a5fa; --hi:#fbbf24; --gu:#34d399; --other:#a78bfa; }
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;overflow:hidden}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Inter,"Noto Sans Gujarati","Noto Sans Devanagari",system-ui,sans-serif;line-height:1.4}
+  .wrap{width:min(100%,1280px);height:100vh;height:100dvh;margin:0 auto;padding:clamp(12px,3vh,28px) 20px;display:flex;flex-direction:column;min-height:0}
+  header h1{font-size:clamp(22px,4vw,30px);margin:0;letter-spacing:-.02em}
+  header p{margin:0;color:var(--muted)}
+  .tabs{display:flex;gap:6px;margin:clamp(12px,2.5vh,24px) 0 10px;flex:none}
+  .tab{border:1px solid var(--line);background:transparent;color:var(--ink);padding:7px 14px;border-radius:999px;cursor:pointer;font:inherit;font-size:14px}
+  .tab.active{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:clamp(12px,2.5vw,20px);min-height:0;flex:1;overflow:hidden}
+  #single.card{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(0,1.1fr);gap:18px;padding:0;border:0;background:transparent;overflow:hidden}
+  #single.hidden{display:none}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:clamp(16px,2.5vw,24px);min-width:0;min-height:0;overflow:hidden}
+  .panel h2{font-size:16px;margin:0 0 14px}
+  .input-panel{display:flex;flex-direction:column}
+  .output-panel{overflow:hidden}
+  .empty-result{display:grid;place-items:center;height:calc(100% - 34px);min-height:150px;color:var(--muted);text-align:center}
+  textarea{display:block;width:100%;height:clamp(74px,14vh,112px);border:1px solid var(--line);border-radius:10px;padding:12px;
+    font:inherit;font-size:16px;background:var(--bg);color:var(--ink);resize:none}
+  textarea:focus{outline:2px solid var(--accent);border-color:transparent}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:9px}
+  button.primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:10px 20px;font:inherit;font-weight:600;cursor:pointer}
+  button.primary:disabled{opacity:.5}
+  .examples{margin-top:10px}
+  .examples summary{width:max-content;max-width:100%;color:var(--muted);font-size:13px;cursor:pointer;list-style:none}
+  .examples summary::-webkit-details-marker{display:none}
+  .examples summary::before{content:"▸";display:inline-block;margin-right:7px;color:var(--accent);transition:transform .15s}
+  .examples[open] summary::before{transform:rotate(90deg)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{border:1px dashed var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:4px 10px;font:inherit;font-size:13px;cursor:pointer}
+  .chip:hover{color:var(--ink);border-color:var(--muted)}
+  .result{margin-top:12px;display:none;grid-template-columns:1fr 1fr;gap:4px 18px;align-content:start}
+  .result>.lang,.result>.sub,.result>.badges,.result>.meter,.result>#r-conf{grid-column:1/-1}
+  .lang{font-size:clamp(21px,3vw,28px);font-weight:700;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:14px}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}
+  .badge{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
+  .meter{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin:4px 0 0}
+  .meter i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .4s}
+  h3{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:9px 0 5px}
+  .tokens{display:flex;flex-wrap:wrap;gap:6px}
+  .tok{padding:3px 6px;border-radius:7px;font-size:13px;border:1px solid;display:flex;flex-direction:column;align-items:center;line-height:1.15}
+  .tok small{font-size:10px;font-weight:700;text-transform:uppercase;opacity:.8}
+  .tok.en{color:var(--en);border-color:var(--en)} .tok.hi{color:var(--hi);border-color:var(--hi)}
+  .tok.gu{color:var(--gu);border-color:var(--gu)} .tok.other{color:var(--other);border-color:var(--other)}
+  .result-section{min-width:0}
+  .result-note{font-size:11px;color:var(--muted)}
+  .share-list{display:grid;gap:4px}
+  .share-row{display:grid;grid-template-columns:minmax(54px,auto) 1fr 40px;gap:6px;align-items:center;font-size:11px}
+  .share-row .bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+  .share-row .bar i{display:block;height:100%;background:var(--muted);border-radius:99px}
+  .share-row:first-child .bar i{background:var(--accent)}
+  .text-button{padding:4px 0;border:0;background:transparent;color:var(--accent);font:inherit;font-size:12px;text-align:left;cursor:pointer}
+  dialog{width:min(560px,calc(100vw - 28px));max-height:min(78vh,620px);padding:0;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink)}
+  dialog::backdrop{background:rgba(0,0,0,.48)}
+  .modal-head{position:sticky;top:0;display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+  .modal-head h2{margin:0;font-size:16px}
+  .modal-close{border:1px solid var(--line);border-radius:8px;padding:5px 10px;background:transparent;color:var(--ink);font:inherit;cursor:pointer}
+  .all-tokens{display:flex;flex-wrap:wrap;gap:6px;padding:14px 16px;overflow:auto;max-height:calc(min(78vh,620px) - 58px)}
+  .prob{display:grid;grid-template-columns:minmax(54px,auto) 1fr 42px;gap:6px;align-items:center;font-size:12px;margin:3px 0}
+  .prob .bar{height:7px;background:var(--line);border-radius:99px;overflow:hidden}
+  .prob .bar i{display:block;height:100%;background:var(--muted)}
+  .prob.top .bar i{background:var(--accent)}
+  .prob span:last-child{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:5px}
+  .legend b{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;table-layout:fixed}
+  th,td{text-align:left;padding:6px;border-bottom:1px solid var(--line);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  th{color:var(--muted);font-weight:500}
+  .err{color:#dc2626;margin-top:10px}
+  .badge.genz{background:linear-gradient(90deg,#db2777,#7c3aed);color:#fff}
+  .slang{display:grid;gap:6px}
+  .slang div{display:flex;gap:10px;align-items:baseline;padding:8px 12px;border-radius:9px;background:var(--bg);border:1px solid var(--line);font-size:14px}
+  .slang b{font-weight:700;color:#db2777;white-space:nowrap}
+  .slang span{color:var(--muted)}
+  footer{margin-top:30px;color:var(--muted);font-size:13px}
+  footer a{color:var(--muted)}
+  .hidden{display:none}
+  @media(max-width:760px){
+    .wrap{padding:12px}
+    .tabs{margin:12px 0 8px}
+    .card{padding:12px}
+    #single.card{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);gap:10px}
+    #single.examples-open{grid-template-rows:minmax(0,1fr)}
+    .panel{padding:12px}
+    .panel h2{margin-bottom:9px}
+    .input-panel{overflow:visible}
+    .output-panel{overflow:hidden}
+    .chips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+    .chip{text-align:left;white-space:normal}
+    .result{gap:2px 10px}
+    .result>.sub{font-size:12px}
+    .prob{grid-template-columns:minmax(48px,auto) 1fr 38px;gap:4px;font-size:11px}
+    .tokens{gap:4px}
+    .tok{font-size:12px}
+    table{font-size:11px}
+  }
+  @media(max-height:620px){
+    .wrap{padding-top:8px;padding-bottom:8px}
+    .tabs{margin-top:8px}
+    textarea{height:68px}
+    .examples{margin-top:6px}
+    .result{margin-top:6px}
+    h3{margin-top:5px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Language Detector</h1>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="single">Single text</button>
+    <button class="tab" data-tab="batch">Batch</button>
+  </div>
+
+  <section id="single" class="card">
+    <div class="panel input-panel">
+      <h2>Enter text</h2>
+      <textarea id="text" placeholder="Type or paste text here…"></textarea>
+      <div class="row">
+        <button class="primary" id="go">Detect language</button>
+        <span class="sub">Ctrl + Enter</span>
+      </div>
+      <details class="examples" id="example-list" open>
+        <summary>Try an example</summary>
+        <div class="chips" id="examples"></div>
+      </details>
+      <div class="err" id="err"></div>
+    </div>
+
+    <div class="panel output-panel" id="output-panel">
+      <h2>Result</h2>
+      <div class="empty-result" id="empty-result">Your language detection result will appear here.</div>
+      <div class="result" id="result">
+        <div class="lang" id="r-lang"></div>
+        <div class="sub" id="r-sub"></div>
+        <div class="badges" id="r-badges"></div>
+        <div class="meter"><i id="r-meter"></i></div>
+        <div class="sub" id="r-conf"></div>
+
+        <div id="r-genz" class="result-section hidden">
+          <h3>Slang decoded</h3>
+          <div class="slang" id="r-slang"></div>
+        </div>
+
+        <div class="result-section">
+          <h3>Word-level languages</h3>
+          <div class="tokens" id="r-tokens"></div>
+          <h3>Language prediction from words</h3>
+          <div class="share-list" id="language-share"></div>
+          <div class="legend"><span><b style="background:var(--en)"></b>English</span><span><b style="background:var(--hi)"></b>Hindi</span><span><b style="background:var(--gu)"></b>Gujarati</span><span><b style="background:var(--other)"></b>Other</span></div>
+        </div>
+
+        <div class="result-section">
+          <h3>Model probabilities</h3>
+          <div id="r-probs"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="batch" class="card hidden">
+    <textarea id="batch-text" placeholder="One text per line"></textarea>
+    <div class="row"><button class="primary" id="go-batch">Detect all</button></div>
+    <div class="err" id="err-batch"></div>
+    <div class="sub" id="batch-summary"></div>
+    <table id="batch-table" class="hidden">
+      <thead><tr><th>Text</th><th>Language</th><th>Confidence</th><th>Code-mixed</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</div>
+<dialog id="tokens-modal" aria-labelledby="tokens-modal-title">
+  <div class="modal-head">
+    <h2 id="tokens-modal-title">All words</h2>
+    <button class="modal-close" id="close-tokens" type="button">Close</button>
+  </div>
+  <div class="all-tokens" id="all-tokens"></div>
+</dialog>
+
+<script>
+const EXAMPLES = [
+  "kem cho maja ma ne?", "kaise ho bhai?", "bhai aaje meeting che office ma",
+  "kal meeting hai office mein", "km 6o bhai, jalso padi gayo", "bhai ye lowkey op hai fr",
+  "ngl this biryani is bussin fr", "How are you doing?", "તમે ક્યાં રહો છો?",
+  "आप कैसे हैं?", "मैं office जा रहा हूँ", "Bonjour mon ami", "வணக்கம்", "お元気ですか？"
+];
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const TAGNAME = {en:"English", hi:"Hindi", gu:"Gujarati"};
+
+function tokenMarkup(t){
+  const cls = ["en","hi","gu"].includes(t.lang) ? t.lang : "other";
+  return `<span class="tok ${cls}">${esc(t.token)}<small>${esc(TAGNAME[t.lang] || t.lang)}</small></span>`;
+}
+
+EXAMPLES.forEach(e => {
+  const b = document.createElement("button");
+  b.className = "chip"; b.textContent = e;
+  b.onclick = () => { $("text").value = e; $("example-list").open = false; detect(); };
+  $("examples").appendChild(b);
+});
+
+ $("example-list").addEventListener("toggle", () => {
+  const compactLayout = window.matchMedia("(max-width: 760px)").matches;
+  $("single").classList.toggle("examples-open", compactLayout && $("example-list").open);
+  $("output-panel").classList.toggle("hidden", compactLayout && $("example-list").open);
+  if (compactLayout) {
+    if ($("r-lang").textContent) {
+      $("result").style.display = $("example-list").open ? "none" : "grid";
+      $("empty-result").classList.toggle("hidden", $("example-list").open);
+    }
+  } else if ($("r-lang").textContent) {
+    $("result").style.display = "grid";
+  }
+});
+if (window.matchMedia("(max-width: 760px)").matches) $("example-list").open = false;
+
+document.querySelectorAll(".tab").forEach(t => t.onclick = () => {
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x === t));
+  $("single").classList.toggle("hidden", t.dataset.tab !== "single");
+  $("batch").classList.toggle("hidden", t.dataset.tab !== "batch");
+});
+
+async function detect(){
+  const text = $("text").value.trim();
+  $("err").textContent = "";
+  if(!text) return;
+  $("go").disabled = true;
+  try{
+    const res = await fetch("/api/detect", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({text, detailed:true})});
+    if(!res.ok) throw new Error((await res.json()).detail || res.statusText);
+    render(await res.json());
+  }catch(e){ $("err").textContent = "Error: " + e.message; }
+  $("go").disabled = false;
+}
+
+function render(r){
+  $("result").style.display = "grid";
+  $("empty-result").classList.add("hidden");
+  $("r-lang").textContent = r.display_name || r.language_name;
+  $("r-sub").textContent = (r.is_genz ? `${r.language_name} · ` : "") +
+    `Base language: ${r.base_language} · Script: ${r.script || "–"} · Method: ${r.method}` + (r.note ? ` · ${r.note}` : "");
+  const badges = [];
+  if(r.is_genz) badges.push(`<span class="badge genz">🔥 Gen Z · score ${r.genz_score}</span>`);
+  if(r.is_romanized) badges.push("Romanized");
+  if(r.is_code_mixed) badges.push(`Code-mixed · CMI ${r.code_mixing_index}`);
+  $("r-badges").innerHTML = badges.map(b => b.startsWith("<span") ? b : `<span class="badge">${b}</span>`).join("");
+  $("r-genz").classList.toggle("hidden", !r.is_genz);
+  const slang = r.genz_terms || [];
+  $("r-slang").innerHTML = slang.slice(0, 2).map(t => `<div><b>${esc(t.term)}</b><span>${esc(t.meaning)}</span></div>`).join("") +
+    (slang.length > 2 ? `<span class="result-note">+${slang.length - 2} more</span>` : "");
+  const pct = Math.round(r.confidence * 100);
+  $("r-meter").style.width = pct + "%";
+  $("r-conf").textContent = `Confidence ${pct}% · ${r.processing_time_ms} ms`;
+  const tokens = r.tokens || [];
+  $("r-tokens").innerHTML = tokens.slice(0, 8).map(tokenMarkup).join("") +
+    (tokens.length > 8 ? `<button class="text-button" id="show-all-tokens" type="button">View all ${tokens.length} words</button>` : "");
+  $("all-tokens").innerHTML = tokens.map(tokenMarkup).join("");
+  if (tokens.length > 8) {
+    $("show-all-tokens").onclick = () => $("tokens-modal").showModal();
+  }
+  const counts = new Map();
+  tokens.forEach(t => counts.set(t.lang, (counts.get(t.lang) || 0) + 1));
+  const shares = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  $("language-share").innerHTML = shares.map(([lang, count]) => {
+    const pct = count / tokens.length * 100;
+    return `<div class="share-row"><span>${esc(TAGNAME[lang] || lang)}</span><span class="bar"><i style="width:${pct}%"></i></span><span>${pct.toFixed(1)}%</span></div>`;
+  }).join("");
+  const probs = Object.entries(r.probabilities || {}).filter(([, value]) => Number(value) > 0).slice(0, 4);
+  $("r-probs").innerHTML = probs.map(([k,v],i) =>
+    `<div class="prob ${i===0?"top":""}"><span>${k}</span><span class="bar"><i style="width:${v*100}%"></i></span><span>${(v*100).toFixed(1)}%</span></div>`
+  ).join("");
+}
+
+async function detectBatch(){
+  const texts = $("batch-text").value.split("\n").map(s => s.trim()).filter(Boolean).slice(0,100);
+  $("err-batch").textContent = "";
+  if(!texts.length) return;
+  try{
+    const res = await fetch("/api/detect/batch", {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({texts})});
+    if(!res.ok) throw new Error(res.statusText);
+    const data = await res.json();
+    const tb = document.querySelector("#batch-table tbody");
+    tb.innerHTML = data.results.slice(0, 6).map(r => `<tr><td>${esc(r.text)}</td><td>${r.display_name || r.language_name}</td><td>${Math.round(r.confidence*100)}%</td><td>${r.is_code_mixed?"yes":"no"}</td></tr>`).join("");
+    $("batch-summary").textContent = data.results.length > 6 ? `Showing 6 of ${data.results.length} results.` : `${data.results.length} result${data.results.length === 1 ? "" : "s"}.`;
+    $("batch-table").classList.remove("hidden");
+  }catch(e){ $("err-batch").textContent = "Error: " + e.message; }
+}
+
+$("go").onclick = detect;
+$("go-batch").onclick = detectBatch;
+$("close-tokens").onclick = () => $("tokens-modal").close();
+$("tokens-modal").addEventListener("click", e => {
+  if (e.target === $("tokens-modal")) $("tokens-modal").close();
+});
+$("text").addEventListener("keydown", e => { if(e.key==="Enter" && (e.ctrlKey||e.metaKey)) detect(); });
+</script>
+</body>
+</html>
